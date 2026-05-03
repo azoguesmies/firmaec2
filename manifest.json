@@ -1,0 +1,24 @@
+{
+  "name": "FirmaEC — Firma Electrónica",
+  "short_name": "FirmaEC",
+  "description": "Firma electrónica de documentos PDF con certificado digital BCE Ecuador",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#002B5C",
+  "theme_color": "#002B5C",
+  "orientation": "any",
+  "lang": "es-EC",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Firmar documentos",
+      "url": "/",
+      "description": "Abrir la aplicación de firma electrónica"
+    }
+  ]
+}
