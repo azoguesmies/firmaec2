@@ -40,6 +40,53 @@ from cryptography.x509 import BasicConstraints
 app = Flask(__name__, static_folder="static", template_folder="templates")
 CORS(app)
 
+
+@app.after_request
+def agregar_cabeceras_pwa(response):
+    """Agrega cabeceras necesarias para que la PWA sea instalable."""
+    # Permite instalar la PWA en Chrome/Edge/Safari
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options']        = 'SAMEORIGIN'
+
+    # Cache: manifest y SW nunca se cachean en el navegador
+    if request.path in ('/static/manifest.json', '/static/sw.js'):
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma']        = 'no-cache'
+        response.headers['Expires']       = '0'
+
+    # El Service Worker necesita content-type correcto
+    if request.path == '/static/sw.js':
+        response.headers['Content-Type'] = 'application/javascript; charset=utf-8'
+        response.headers['Service-Worker-Allowed'] = '/'
+
+    # Manifest
+    if request.path == '/static/manifest.json':
+        response.headers['Content-Type'] = 'application/manifest+json; charset=utf-8'
+
+    return response
+
+
+# Rutas explícitas para Service Worker y manifest (evita problemas de scope)
+@app.route('/sw.js')
+def service_worker():
+    """Sirve el SW desde la raíz para que su scope sea '/'."""
+    from flask import make_response, send_from_directory
+    resp = make_response(send_from_directory('static', 'sw.js'))
+    resp.headers['Content-Type']          = 'application/javascript; charset=utf-8'
+    resp.headers['Cache-Control']         = 'no-cache, no-store, must-revalidate'
+    resp.headers['Service-Worker-Allowed'] = '/'
+    return resp
+
+
+@app.route('/manifest.json')
+def manifest():
+    """Sirve el manifest desde la raíz."""
+    from flask import make_response, send_from_directory
+    resp = make_response(send_from_directory('static', 'manifest.json'))
+    resp.headers['Content-Type']  = 'application/manifest+json; charset=utf-8'
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return resp
+
 TZ_EC       = timezone(timedelta(hours=-5))
 QR_PX       = 100
 SELLO_PT_H  = 70
