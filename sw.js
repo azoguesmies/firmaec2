@@ -1,36 +1,67 @@
-/* FirmaEC PWA — Service Worker v1.0 */
-const CACHE   = 'firmaec-v1';
-const OFFLINE = ['/'];
+/* FirmaEC PWA — Service Worker v1.1 */
 
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(OFFLINE))
+const CACHE_NAME  = 'firmaec-v1.1';
+const ASSETS_CORE = [
+  '/',
+  '/static/manifest.json',
+  '/static/icons/icon-192.png',
+  '/static/icons/icon-512.png',
+];
+
+/* ── Instalación: precachear assets core ─────────────────────── */
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(ASSETS_CORE))
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    )
+/* ── Activación: limpiar caches anteriores ───────────────────── */
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(
+        keys
+          .filter(key => key !== CACHE_NAME)
+          .map(key  => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-self.addEventListener('fetch', e => {
-  // No cachear llamadas a la API de firma (datos sensibles)
-  if (e.request.url.includes('/api/')) return;
+/* ── Fetch: cache-first para assets, network-only para API ───── */
+self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
 
-  e.respondWith(
-    caches.match(e.request).then(cached => {
+  // Las llamadas a la API nunca se cachean (datos sensibles)
+  if (url.pathname.startsWith('/api/')) return;
+
+  // Solo manejar GET
+  if (event.request.method !== 'GET') return;
+
+  event.respondWith(
+    caches.match(event.request).then(cached => {
       if (cached) return cached;
-      return fetch(e.request).then(resp => {
-        if (resp && resp.status === 200 && resp.type === 'basic') {
-          const clone = resp.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
+
+      return fetch(event.request).then(response => {
+        // Solo cachear respuestas válidas del mismo origen
+        if (
+          response &&
+          response.status === 200 &&
+          (response.type === 'basic' || response.type === 'cors')
+        ) {
+          const toCache = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, toCache);
+          });
         }
-        return resp;
+        return response;
+      }).catch(() => {
+        // Offline fallback: devolver la raíz cacheada
+        if (event.request.mode === 'navigate') {
+          return caches.match('/');
+        }
       });
     })
   );

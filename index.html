@@ -8,7 +8,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="FirmaEC" />
-  <link rel="manifest" href="/static/manifest.json" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="application-name" content="FirmaEC" />
+  <link rel="manifest" href="/manifest.json" />
   <link rel="icon" href="/static/icons/icon-192.png" />
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -715,6 +717,13 @@
       <div class="header-title">FirmaEC</div>
       <div class="header-sub">Firma Electrónica Digital</div>
     </div>
+    <button id="btn-instalar" onclick="instalarPWA()"
+            style="display:none;margin-left:auto;margin-right:10px;
+                   background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
+                   color:#fff;font-family:var(--font);font-size:.78rem;font-weight:600;
+                   padding:6px 14px;border-radius:20px;cursor:pointer;">
+      ⬇ Instalar app
+    </button>
     <div class="header-badge">
       <span class="status-dot"></span>PAdES · BCE
     </div>
@@ -1265,8 +1274,42 @@
   }
 
   /* ── Service Worker ───────────────────────────────────────── */
+  /* ── Instalación PWA ─────────────────────────────────────────── */
+  let _installPrompt = null;
+
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    _installPrompt = e;
+    const btn = document.getElementById('btn-instalar');
+    if (btn) btn.style.display = 'inline-block';
+  });
+
+  window.addEventListener('appinstalled', () => {
+    _installPrompt = null;
+    const btn = document.getElementById('btn-instalar');
+    if (btn) btn.style.display = 'none';
+    toast('FirmaEC instalada correctamente.', 'success');
+  });
+
+  function instalarPWA() {
+    if (!_installPrompt) {
+      toast('Use el menu del navegador para instalar la app.', 'info');
+      return;
+    }
+    _installPrompt.prompt();
+    _installPrompt.userChoice.then(choice => {
+      if (choice.outcome === 'accepted') toast('Instalando FirmaEC...', 'success');
+      _installPrompt = null;
+      const btn = document.getElementById('btn-instalar');
+      if (btn) btn.style.display = 'none';
+    });
+  }
+
+  /* ── Service Worker ───────────────────────────────────────────── */
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      .then(reg => console.log('FirmaEC SW OK, scope:', reg.scope))
+      .catch(err => console.warn('SW no disponible:', err));
   }
 </script>
 </body>
